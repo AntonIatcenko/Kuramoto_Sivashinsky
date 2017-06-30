@@ -14,8 +14,8 @@
 %
 % Temporal discretization: fourth order exponential Runge-Kutta.
 %% Physical Parameters                      
-L = 22.215;         % Domain size for the equation before rescaling  %32*pi;
-Tfinal = 2000;      % Total length of the simulation
+L = 32*pi;          % Domain size for the equation before rescaling  
+Tfinal = 150;       % Total length of the simulation
 stab = 1;           % Energy transfer parameter
 s = 2*pi/L;         % Scaling parameter
 %% Computational Parameters                 
@@ -25,13 +25,12 @@ SN = 1024;          % Number of grid points (number of computed modes)
 M = 16;             % Number of points for complex means
 dx = 2*pi/SN;       % Spatial resolution
 x = -pi:dx:pi-dx;   % Physical space
-TN = 2e6;           % Number of time steps
-plotgap = 1e3;      % Number of time steps between plots
+TN = 15e3;          % Number of time steps
+plotgap = 1e2;      % Number of time steps between plots
 dt = Tfinal/TN;     % Size of the time step 
 %% Initial Condition                        
-u = sin(3*x);       % Initial condition in real space  cos(x).*(1+sin(x));
-                    % exp(-(x+pi).^2);   exp(-10*x.^2); %cos(6*x); %cos(x).*(1+sin(x))  -sin(x);
-u_hat = fft(u);     % Initial condition in Fourier space
+u = cos(x).*(1+sin(x));   % Initial condition in real space                  
+u_hat = fft(u);           % Initial condition in Fourier space
 %% Auxiliary Variables                      
 numplots = TN/plotgap;           % Number of plots
 data = zeros(numplots+1, SN);    % Preallocating for solution
@@ -45,16 +44,15 @@ E2 = exp(dt*evals/2);            % Half linear step
 q = -1i*K*stab/2;                % Coefficient of the nonlinear part of the pde
 r = exp(1i*pi*((1:M)-.5)/M);     % Roots of unity
 %% Time Stepping Coefficients               
-CC = dt*Mds(:,ones(M,1)) + r(ones(SN,1),:);  % Complex countours for reciprocal evaluation
-CC = CC';
+CC = dt*(Mds(:,ones(M,1)) + r(ones(SN,1),:))';  % Complex countours for reciprocal evaluation
 Q  = dt*real(mean((exp(CC/2)-1)./CC)); 
 f1 = dt*real(mean((-4-CC+exp(CC).*(4-3*CC+CC.^2))./CC.^3)); 
 f2 = dt*real(mean((2+CC+exp(CC).*(-2+CC))./CC.^3)); 
 f3 = dt*real(mean((-4-3*CC-CC.^2+exp(CC).*(4-CC))./CC.^3));  
 %% Time Integration                         
 tic
-for pic = 2:numplots+1
-    for step = 1:plotgap
+for pic = 2:numplots+1            % Stepping from one plot to the next
+    for step = 1:plotgap          % Stepping between the plots
         % Fourth order exponential Runge-Kutta 
         N1 = q.*fft(ifft(u_hat,'symmetric').^2);    % Telling ifft that my vector
         A = E2.*u_hat + Q.*N1;                      % is the Fourier transform of 
@@ -77,6 +75,10 @@ maxs = max(abs(Rdata), [], 2);                     % Maximums at each time step
 L2norms = sqrt(sum(Rdata.^2, 2)*L/SN);             % L2 norm at each time step
 time = 0:dt*plotgap:Tfinal;                        % Creating the time vector
 %% Plotting                                 
+if exist('../KS_Pictures_Movies','dir')~=7
+    mkdir ../KS_Pictures_Movies    % Creates folder for outputs
+    disp('Expected folder for outputs was not found, so I made it.')
+end  
 fig100 = figure(100);
 set(fig100, 'PaperOrientation', 'landscape');
 set(fig100, 'position', [0 0 1280 800]);
@@ -85,23 +87,18 @@ pos1 = get(p1, 'position');
 pos1 = pos1 + [-.05 -.1 .1 .1]; 
 set(p1, 'position', pos1);
 surf((x+pi)/s, time, Rdata, 'edgecolor', 'none')   
-colorbar, view([0 90])%, set(gca, 'visible', 'off'); 
+colorbar, view([0 90])
 title(['Time evolution in real space with ETDRK4, dt = ', num2str(dt)], 'fontsize', 16)
 xlim([0 L-dx/s]); ylim([0 Tfinal]);
 xlabel('Space', 'Fontsize', 16), ylabel('Time', 'Fontsize', 16)
-colormap(p1, 'default') %colormap(p1, summer)
+colormap(p1, 'default') 
 
 p2 = subplot(2, 2, 2);
 pos2 = get(p2, 'position');
 pos2 = pos2 + [-.02 -.1 .1 .1]; 
 set(p2, 'position', pos2);
-%surf(1:SN/2-1, time, log(pSpec), 'edgecolor', 'none')
-%contourf(1:SN/2-1, time, log(pSpec), 30, 'edgecolor', 'none')
 contourf(K(1:SN/8), time, log(pSpec(:, 1:SN/8)), 30, 'edgecolor', 'none')
-%contourf(2:2:200, time, log(pSpec(:, 2:2:200)), 50, 'edgecolor', 'none')
-%xlim([1 SN/2-1]); ylim([0 Tfinal]);
-colormap(p2, autumn)
-colorbar%, view([-15 70])%, set(gca, 'visible', 'off');
+colormap(p2, autumn), colorbar
 title('Power spectrum evolution on logarithmic scale', 'fontsize', 16) 
 xlabel('Wave numbers', 'Fontsize', 16), ylabel('Time', 'Fontsize', 16)
 
@@ -109,17 +106,14 @@ p3 = subplot(2, 1, 2);
 pos3 = get(p3, 'position');
 pos3 = pos3 + [0 0 0 -.1]; 
 set(p3, 'position', pos3);
-%plot(time, exp((1e+15)*means), '.', 'markersize', 15)
 plot(time, L2norms, '.', 'markersize', 15)
 hold on
-plot(time, maxs, '.', 'markersize', 15)
-%title('Time evolution of the mean and maximum')
+plot(time, maxs, '.', 'markersize', 15), hold off
 title('Time evolution of norms', 'fontsize', 16)
 xlabel('Time', 'Fontsize', 16)
-%legend({'exp(10^{15}mean(u))', 'Maximum of u'}, 'Location', 'Northwest', 'FontSize', 12)
 legend({'L^2 norm of u', 'Maximum of u'}, 'Location', 'Northwest', 'FontSize', 12)
 
-print(fig100, sprintf('../Pictures_Movies/KS_L%0.2f.png', L), '-dpng')
+print(fig100, sprintf('../KS_Pictures_Movies/KS_L%0.2f.png', L), '-dpng')
 
 figure(101)
 surf((x+pi)/s, time, Du, 'edgecolor', 'none')
@@ -129,11 +123,11 @@ xlim([0 L-dx/s]); ylim([0 Tfinal]);
 xlabel('Space', 'Fontsize', 16), ylabel('Time', 'Fontsize', 16)
 %% Movie                                    
 if MakeMovie
-rates = zeros(1, numplots+1);                                       % Preallocating for convergence rates
-name = sprintf('../Pictures_Movies/Power_Spectrum_L%0.2f.avi', L);  % Name for the video file
-vidObj = VideoWriter(name);                                         % Creating video file
-vidObj.FrameRate = 10;  open(vidObj);                               % Opening video file
-       
+rates = zeros(1, numplots+1);                                             % Preallocating for convergence rates
+name = sprintf('../KS_Pictures_Movies/KS_Power_Spectrum_L%0.2f.avi', L);  % Name for the video file
+vidObj = VideoWriter(name);                                               % Creating video file
+vidObj.FrameRate = 10;  open(vidObj);                                     % Opening video file
+         
 fig102 = figure(102);                           % Initial plots
 set(fig102, 'position', [0 0 1280 800]);        % Full screen figure
 plot102a = plot(K(1:SN/8), log(pSpec(1, 1:SN/8)),...
