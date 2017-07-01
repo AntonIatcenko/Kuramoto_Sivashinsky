@@ -14,23 +14,23 @@
 %
 % Temporal discretization: fourth order exponential Runge-Kutta.
 %% Physical Parameters                      
-L = 32*pi;          % Domain size for the equation before rescaling  
-Tfinal = 150;       % Total length of the simulation
+L = 25.13;          % Domain size for the equation before rescaling  
+Tfinal = 5e2;       % Total length of the simulation
 stab = 1;           % Energy transfer parameter
 s = 2*pi/L;         % Scaling parameter
 %% Computational Parameters                 
-MakeMovie = 1;      % Controls creation of .avi file 
+MakeMovie = 0;      % Controls creation of .avi file 
 decayRates = 0;     % Controls computation of decay rates of the Fourier coefficients
 SN = 1024;          % Number of grid points (number of computed modes)
-M = 16;             % Number of points for complex means
+M = 64;             % Number of points for complex means
 dx = 2*pi/SN;       % Spatial resolution
 x = -pi:dx:pi-dx;   % Physical space
-TN = 15e3;          % Number of time steps
-plotgap = 1e2;      % Number of time steps between plots
+TN = 5e5;           % Number of time steps
+plotgap = 1e3;      % Number of time steps between plots
 dt = Tfinal/TN;     % Size of the time step 
 %% Initial Condition                        
-u = cos(x).*(1+sin(x));   % Initial condition in real space                  
-u_hat = fft(u);           % Initial condition in Fourier space
+u = sin(3*x);        % Initial condition in real space   %cos(x).*(1+sin(x));                 
+u_hat = fft(u);      % Initial condition in Fourier space
 %% Auxiliary Variables                      
 numplots = TN/plotgap;           % Number of plots
 data = zeros(numplots+1, SN);    % Preallocating for solution
