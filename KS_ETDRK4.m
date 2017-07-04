@@ -14,22 +14,21 @@
 %
 % Temporal discretization: fourth order exponential Runge-Kutta.
 %% Physical Parameters                      
-L = 25.13;          % Domain size for the equation before rescaling  
+L = 13;             % Domain size for the equation before rescaling  
 Tfinal = 5e2;       % Total length of the simulation
-stab = 1;           % Energy transfer parameter
 s = 2*pi/L;         % Scaling parameter
 %% Computational Parameters                 
 MakeMovie = 0;      % Controls creation of .avi file 
 decayRates = 0;     % Controls computation of decay rates of the Fourier coefficients
-SN = 1024;          % Number of grid points (number of computed modes)
+SN = 64;            % Number of grid points (number of computed modes)
 M = 64;             % Number of points for complex means
 dx = 2*pi/SN;       % Spatial resolution
 x = -pi:dx:pi-dx;   % Physical space
-TN = 5e5;           % Number of time steps
-plotgap = 1e3;      % Number of time steps between plots
+TN = 5e4;           % Number of time steps
+plotgap = 1e1;      % Number of time steps between plots
 dt = Tfinal/TN;     % Size of the time step 
 %% Initial Condition                        
-u = sin(3*x);        % Initial condition in real space   %cos(x).*(1+sin(x));                 
+u = sin(2*x);        % Initial condition in real space                   
 u_hat = fft(u);      % Initial condition in Fourier space
 %% Auxiliary Variables                      
 numplots = TN/plotgap;           % Number of plots
@@ -41,7 +40,7 @@ K = Mds*s;                       % Wave numbers
 evals = K.^2-K.^4;               % Eigenvalues of the linear part of the pde
 E1 = exp(dt*evals);              % Full linear step
 E2 = exp(dt*evals/2);            % Half linear step
-q = -1i*K*stab/2;                % Coefficient of the nonlinear part of the pde
+q = -1i*K/2;                     % Coefficient of the nonlinear part of the pde
 r = exp(1i*pi*((1:M)-.5)/M);     % Roots of unity
 %% Time Stepping Coefficients               
 CC = dt*(Mds(:,ones(M,1)) + r(ones(SN,1),:))';  % Complex countours for reciprocal evaluation
@@ -115,30 +114,29 @@ legend({'L^2 norm of u', 'Maximum of u'}, 'Location', 'Northwest', 'FontSize', 1
 
 print(fig100, sprintf('../KS_Pictures_Movies/KS_L%0.2f.png', L), '-dpng')
 
-figure(101)
-surf((x+pi)/s, time, Du, 'edgecolor', 'none')
-colorbar, view([0 90])
-title('Time evolution of derivative')
-xlim([0 L-dx/s]); ylim([0 Tfinal]);
-xlabel('Space', 'Fontsize', 16), ylabel('Time', 'Fontsize', 16)
+% figure(101)
+% surf((x+pi)/s, time, Du, 'edgecolor', 'none')
+% colorbar, view([0 90])
+% title('Time evolution of derivative')
+% xlim([0 L-dx/s]); ylim([0 Tfinal]);
+% xlabel('Space', 'Fontsize', 16), ylabel('Time', 'Fontsize', 16)
 %% Movie                                    
 if MakeMovie
-rates = zeros(1, numplots+1);                                             % Preallocating for convergence rates
-name = sprintf('../KS_Pictures_Movies/KS_Power_Spectrum_L%0.2f.avi', L);  % Name for the video file
-vidObj = VideoWriter(name);                                               % Creating video file
-vidObj.FrameRate = 10;  open(vidObj);                                     % Opening video file
+name = sprintf('../KS_Pictures_Movies/KS_modes_L%0.2f.avi', L);  % Name for the video file
+vidObj = VideoWriter(name);                                      % Creating video file
+vidObj.FrameRate = 10;  open(vidObj);                            % Opening video file
          
 fig102 = figure(102);                           % Initial plots
 set(fig102, 'position', [0 0 1280 800]);        % Full screen figure
-plot102a = plot(K(1:SN/8), log(pSpec(1, 1:SN/8)),...
+plot102a = plot(K(1:SN/2), log(pSpec(1, 1:SN/2)),...
     '-ro', 'MarkerFaceColor', 'r',...
     'LineWidth', 1, 'MarkerSize', 8); 
 hold on
 %plot102b = plot(K(1:SN/8), 0*(1:SN/8), 'linewidth', 2);
-plot102c = plot(K(1:SN/8), 60*evals(1:SN/8), 'k--',  'linewidth', 1);
+plot102c = plot(K(1:SN/2), 60*evals(1:SN/2), 'k--',  'linewidth', 1);
 hold off
 
-gca102=gca; axis([K(1) K(SN/8) -90 20]), grid on
+gca102=gca; axis([K(1) K(SN/2) -80 20]), grid on
 title('Time = 0', 'Fontsize', 20)
 xlabel('Wave numbers', 'Fontsize', 16)
 ylabel('Energy', 'Fontsize', 16)
@@ -149,11 +147,11 @@ for t = 2:numplots+1
     %rt = polyfit(10:SN/8, log(pSpec(t, 10:SN/8)), 1);  % Best fit linear model
     %rates(t) = -rt(1);                                 % Convergence rate
     
-    set(plot102a,'YData', log(pSpec(t, 1:SN/8)))
+    set(plot102a,'YData', log(pSpec(t, 1:SN/2)))
     %set(plot102b,'YData', polyval(rt, 1:SN/8))
     %title(gca102, sprintf('Time = %1.2f, decay rate = %1.2f',...
         %(t-1)*plotgap*dt, -rt(1)), 'Fontsize', 14)
-    title(gca102, sprintf('Time = %0.0f', (t-1)*plotgap*dt), 'Fontsize', 20)
+    title(gca102, sprintf('Time = %0.1f', (t-1)*plotgap*dt), 'Fontsize', 20)
     %legend([plot102a, plot102b], {'Power Spectrum', 'Best Fit Linear Model'}, 'Fontsize', 14)
     legend([plot102a, plot102c], {'Power Spectrum', 'Eigenvalues'}, 'Fontsize', 16)
     writeVideo(vidObj, getframe(fig102));
@@ -163,6 +161,7 @@ close(vidObj);
 end
 %% Convergence Rate Evolution               
 if decayRates 
+rates = zeros(1, numplots+1);      % Preallocating for convergence rates
 figure(103)
 plot(numplots/4:numplots+1, rates(numplots/4:end), 'linewidth', 3)
 xlim([numplots/4 numplots+1])
